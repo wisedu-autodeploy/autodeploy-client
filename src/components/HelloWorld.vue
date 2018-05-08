@@ -1,6 +1,6 @@
 <template>
   <div class="hello">
-    <div style="margin-bottom: 16px;">
+    <div style="margin-bottom: 16px; text-align:center;">
       <Steps :current="currentStep">
           <Step title="登录" content="登录 gitlab"></Step>
           <Step title="部署" content="选择项目部署"></Step>
@@ -39,7 +39,12 @@
         <div style="margin-top: 8px;">
           <Button type="default" @click="prevStep">上一步</Button>
           <Button type="primary" @click="deploy">部署</Button>
+          <!-- <a :href="logHref" target="_blank">部署</a> -->
         </div>
+
+        <!-- <div style="margin-top: 8px;">
+          <a :href="logHref" target="_blank">查看日志</a>
+        </div> -->
       </div>
 
     </div>
@@ -65,6 +70,7 @@ export default {
 
       currentStep: 0,
       logining: false,
+      latestUUID: '',
     }
   },
   computed: {
@@ -84,7 +90,11 @@ export default {
       } else {
         return this.marathonApps[this.marathonAppIndex]
       }
-    }
+    },
+    logHref() {
+      const splices = location.href.split("#/")
+      return splices[0] + "#" + "/deploy-log/" + this.latestUUID
+    },
   },
   methods: {
     async login() {
@@ -118,7 +128,8 @@ export default {
           password: this.password,
           maintainer: this.selectedGitlabApp.Maintainer,
           name: this.selectedGitlabApp.Name,
-          marathonName: this.selectedMarathonApp
+          marathon_id: this.selectedMarathonApp,
+          marathon_name: this.selectedMarathonApp.toLowerCase().replace(/[^0-9a-z-]/g, '-')
       })
       const {code, data, message} = resData
       if (code !== '0') {
@@ -127,6 +138,11 @@ export default {
         })
         return
       }
+      this.latestUUID = data.uuid
+
+      this.$nextTick(_ => {
+        window.open(this.logHref)
+      })
     },
     prevStep() {
       this.currentStep -= 1
@@ -154,6 +170,8 @@ export default {
     }
 
 
+  },
+  mounted() {
   },
 }
 </script>
