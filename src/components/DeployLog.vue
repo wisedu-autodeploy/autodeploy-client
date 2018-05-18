@@ -1,19 +1,20 @@
 <template>
-  <div style="padding: 16px;
-              display: flex;
-              flex-direction: column;
-              align-items: center;">
+  <div style="padding: 16px;">
     <div style="font-size: 16px; margin-bottom: 16px; font-weight: bold;" class="title">{{title}}</div>
-    <div style="display: flex;">
-      <Steps :current="step" direction="vertical">
+    <div>
+      <Steps :current="step">
         <Step title="TAGING" :content="tag"></Step>
         <Step title="BUILDING" :content="image"></Step>
         <Step title="DEPLOYING" content="DEPLOYING"></Step>
         <Step title="FINISH" content="FINISH"></Step>
       </Steps>
-      <div class="status" style="width: 250px;">
+      <!-- <div class="status" style="width: 250px;">
         STATUS：{{status}}
-      </div>
+      </div> -->
+    </div>
+    <div style="margin-top: 16px;">
+      <h2>BUILD LOG:</h2>
+      <div ref="logContainer" class="log" style="height: calc(100vh - 300px); overflow: auto; margin-left:16px;" v-html="formatLog"></div>
     </div>
   </div>
 </template>
@@ -24,6 +25,7 @@ export default {
   data() {
     return {
       data: fromJS({}),
+      log: [],
     }
   },
   computed: {
@@ -54,16 +56,38 @@ export default {
         case -1: return 'FAILED'
         default: return 'I DONT KNOW'
       }
+    },
+    formatLog() {
+      return this.log.join('<br/>')
     }
   },
   created() {
-    const wsUrl = `ws://${location.host}/deploy/${this.uuid}`
+    let wsUrl = `ws://${location.host}/deploy/${this.uuid}`
+    if (process.env.NODE_ENV === 'development') {
+      wsUrl = `ws://localhost:2334/deploy/${this.uuid}`
+    }
     const ws = new WebSocket(wsUrl)
     ws.onopen = (evt) => {
       ws.send(this.uuid) // 开始部署
     }
     ws.onmessage = (msg) => {
       this.data = fromJS(JSON.parse(msg.data))
+      if (this.data.get('code') === '-1') {
+        return this.$Notice.error({
+          title: "部署出错",
+          desc: this.data.get('message'),
+          duration: 0,
+        })
+      }
+      this.log = this.data.getIn(['data', 'log'], [])
+    }
+  },
+  watch: {
+    log() {
+      const ref = this.$refs.logContainer
+      if (ref) {
+        ref.scrollTop = ref.scrollHeight - ref.clientHeight
+      }
     }
   }
 }
